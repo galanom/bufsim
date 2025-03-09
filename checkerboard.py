@@ -18,12 +18,17 @@ class Checkerboard:
         self.writer_last_marked_color = "navy blue"
         self.writer_filled_color = "powder blue"
         self.reader_head_color = "black"
-        self.reader_trail_color = "slate gray"  # new: reader trail color
+        self.reader_trail_color = "dark gray"
         self.left_shade_factor = 0.8
         self.top_shade_factor = 1.1
 
         # Compute a proportional font size (40% of cell_size) so that a three-digit number fits.
         self.font_size = max(8, int(self.cell_size * 0.4))
+
+        # Dictionary to track for each column (x) the number of non-empty cells.
+        self.column_nonempty_count = {col: 0 for col in range(self.x)}
+        # New variable L: maximum number of columns that have had at least one non-empty cell.
+        self.L = 0
 
         # Board data: mapping (row, col) -> {"id": canvas rectangle (or None in batch),
         # "state": state, "step": step, "text_id": text item id}
@@ -55,7 +60,6 @@ class Checkerboard:
 
         self.reader_current_pos = (0, 0)
         self.reader_moves = 0
-        # List to hold the reader trail cells (max length read_size)
         self.reader_cells = []
         self.time_step = 0
         self.halted = False
@@ -74,8 +78,7 @@ class Checkerboard:
                     if self.halted:
                         break
                     self.execute_writes()
-                if not self.halted:
-                    print("Simulation was ok.")
+                print(f"Simulation was ok. L: {self.L}")
 
         if not self.batch:
             self.root.mainloop()
@@ -133,17 +136,34 @@ class Checkerboard:
 
     def set_cell(self, pos, new_color, new_state, step=None):
         cell = self.cells[pos]
-        if new_state != "empty" and cell.get("step") is None and step is not None:
+        row, col = pos
+        old_state = cell["state"]
+
+        # Update cell step info if transitioning to non-empty.
+        if new_state != "empty" and old_state == "empty" and step is not None:
             cell["step"] = step
-        if new_state == "empty":
+        if new_state == "empty" and old_state != "empty":
             cell["step"] = None
             if cell.get("text_id") is not None:
                 self.canvas.delete(cell["text_id"])
                 cell["text_id"] = None
+
+        # Update the column count.
+        if old_state == "empty" and new_state != "empty":
+            self.column_nonempty_count[col] += 1
+        elif old_state != "empty" and new_state == "empty":
+            self.column_nonempty_count[col] = max(0, self.column_nonempty_count[col] - 1)
+
         cell["state"] = new_state
+
+        # Compute current occupied columns count.
+        current_occ = sum(1 for count in self.column_nonempty_count.values() if count > 0)
+        # Update L if the current count exceeds it.
+        if current_occ > self.L:
+            self.L = current_occ
+
         if not self.batch:
             self.canvas.itemconfig(cell["id"], fill=new_color)
-            row, col = pos
             if (row, col, 'left') in self.side_polygons:
                 left_color = self.adjust_color(new_color, self.left_shade_factor)
                 self.canvas.itemconfig(self.side_polygons[(row, col, 'left')], fill=left_color)
@@ -181,25 +201,21 @@ class Checkerboard:
 
     def advance_reader_marker(self):
         pos = self.reader_current_pos
-        # LEGALITY CHECK: the cell must be "written"
         if self.cells[pos]["state"] != "written":
             self.halt_simulation(f"Rule check failed: reader advances to cell at {pos} that is [{self.cells[pos]['state']}].")
             return
-        # If there is an existing reader head in our trail, update it to dark gray
+        # Update previous reader head (if exists) to the trail color.
         if self.reader_cells:
             prev_head = self.reader_cells[-1]
             self.set_cell(prev_head, self.reader_trail_color, "read")
-        # Set the current cell as the new reader head (black)
         self.set_cell(pos, self.reader_head_color, "reading")
         self.reader_cells.append(pos)
-        # Respect the read_size: if the trail becomes too long, clear the oldest cell
         if len(self.reader_cells) > self.read_size:
             old = self.reader_cells.pop(0)
             self.set_cell(old, self.empty_color, "empty")
         self.reader_moves += 1
 
         r, c = pos
-        # Compute the next position along the diagonal
         if r > 0 and c < self.x - 1:
             next_pos = (r - 1, c + 1)
         else:
@@ -242,7 +258,7 @@ class Checkerboard:
             else:
                 reader_str = "  N/A  "
             self.status_label.config(
-                text=f"step:{self.time_step:3d} | writer: {writer_str} | reader: {reader_str}")
+                text=f"step:{self.time_step:3d} | writer: {writer_str} | reader: {reader_str} | L: {self.L}")
 
     def animate(self):
         if not self.halted:
