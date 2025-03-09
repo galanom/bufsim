@@ -202,7 +202,9 @@ class Checkerboard:
     def advance_reader_marker(self):
         pos = self.reader_current_pos
         if self.cells[pos]["state"] != "written":
-            self.halt_simulation(f"Rule check failed: reader advances to cell at {pos} that is [{self.cells[pos]['state']}].")
+            self.halt_simulation(
+                f"Rule check failed: reader advances to cell at {pos} that is [{self.cells[pos]['state']}]."
+            )
             return
         # Update previous reader head (if exists) to the trail color.
         if self.reader_cells:
@@ -216,9 +218,12 @@ class Checkerboard:
         self.reader_moves += 1
 
         r, c = pos
-        if r > 0 and c < self.x - 1:
-            next_pos = (r - 1, c + 1)
+        if r > 0:
+            # Normal diagonal move, but if c+1 reaches self.x, wrap it modulo self.x.
+            next_pos = (r - 1, (c + 1) % self.x)
         else:
+            # At the top row, we can’t go diagonally upward.
+            # Continue with the original anti-diagonal logic.
             i = r + c
             next_i = i + 1
             if next_i > (self.z - 1) + (self.x - 1):
@@ -228,6 +233,7 @@ class Checkerboard:
             else:
                 next_pos = (self.z - 1, next_i - (self.z - 1))
         self.reader_current_pos = next_pos
+
 
     def halt_simulation(self, error_message):
         if not self.batch:
