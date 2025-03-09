@@ -18,13 +18,15 @@ class Checkerboard:
         self.writer_last_marked_color = "navy blue"
         self.writer_filled_color = "powder blue"
         self.reader_head_color = "black"
+        self.reader_trail_color = "slate gray"  # new: reader trail color
         self.left_shade_factor = 0.8
         self.top_shade_factor = 1.1
 
         # Compute a proportional font size (40% of cell_size) so that a three-digit number fits.
         self.font_size = max(8, int(self.cell_size * 0.4))
 
-        # Board data: mapping (row, col) -> {"id": canvas rectangle (or None in batch), "state": state, "step": step, "text_id": text item id}
+        # Board data: mapping (row, col) -> {"id": canvas rectangle (or None in batch),
+        # "state": state, "step": step, "text_id": text item id}
         self.cells = {}
         self.side_polygons = {}  # Used only in visual mode
         self.last_writer_marked = None
@@ -53,6 +55,7 @@ class Checkerboard:
 
         self.reader_current_pos = (0, 0)
         self.reader_moves = 0
+        # List to hold the reader trail cells (max length read_size)
         self.reader_cells = []
         self.time_step = 0
         self.halted = False
@@ -178,17 +181,25 @@ class Checkerboard:
 
     def advance_reader_marker(self):
         pos = self.reader_current_pos
+        # LEGALITY CHECK: the cell must be "written"
         if self.cells[pos]["state"] != "written":
             self.halt_simulation(f"Rule check failed: reader advances to cell at {pos} that is [{self.cells[pos]['state']}].")
             return
+        # If there is an existing reader head in our trail, update it to dark gray
+        if self.reader_cells:
+            prev_head = self.reader_cells[-1]
+            self.set_cell(prev_head, self.reader_trail_color, "read")
+        # Set the current cell as the new reader head (black)
         self.set_cell(pos, self.reader_head_color, "reading")
         self.reader_cells.append(pos)
+        # Respect the read_size: if the trail becomes too long, clear the oldest cell
         if len(self.reader_cells) > self.read_size:
             old = self.reader_cells.pop(0)
             self.set_cell(old, self.empty_color, "empty")
         self.reader_moves += 1
 
         r, c = pos
+        # Compute the next position along the diagonal
         if r > 0 and c < self.x - 1:
             next_pos = (r - 1, c + 1)
         else:
