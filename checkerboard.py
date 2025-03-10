@@ -58,7 +58,7 @@ class Checkerboard:
         self.writer_pos = (0, 0)
         self.writer_moves = 0
 
-        self.reader_current_pos = (0, 0)
+        self.reader_current_pos = (7, 0)
         self.reader_moves = 0
         self.reader_cells = []
         self.time_step = 0
@@ -218,20 +218,27 @@ class Checkerboard:
         self.reader_moves += 1
 
         r, c = pos
-        if r > 0:
-            # Normal diagonal move, but if c+1 reaches self.x, wrap it modulo self.x.
-            next_pos = (r - 1, (c + 1) % self.x)
+
+        # are we at the bottom?
+        if r == 0:
+            next_pos = (self.z - 1, (c + 2 - self.z) % self.x)
         else:
-            # At the top row, we can’t go diagonally upward.
-            # Continue with the original anti-diagonal logic.
-            i = r + c
-            next_i = i + 1
-            if next_i > (self.z - 1) + (self.x - 1):
-                next_pos = (0, 0)
-            elif next_i < self.z:
-                next_pos = (next_i, 0)
-            else:
-                next_pos = (self.z - 1, next_i - (self.z - 1))
+            next_pos = (r - 1, (c + 1) % self.x)
+
+        #if r > 0:
+        #    # Normal diagonal move, but if c+1 reaches self.x, wrap it modulo self.x.
+        #    next_pos = (r - 1, (c + 1) % self.x)
+        #else:
+        #    # At the top row, we can’t go diagonally upward.
+        #    # Continue with the original anti-diagonal logic.
+        #    i = r + c
+        #    next_i = i + 1
+        #    if next_i > (self.z - 1) + (self.x - 1):
+        #        next_pos = (0, 0)
+        #    elif next_i < self.z:
+        #        next_pos = (next_i, 0)
+        #    else:
+        #        next_pos = (self.z - 1, next_i - (self.z - 1))
         self.reader_current_pos = next_pos
 
 
