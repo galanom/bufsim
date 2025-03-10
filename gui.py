@@ -43,9 +43,9 @@ def get_params():
 
     # Define variables
     z_var = tk.StringVar(value="8")
-    x_var = tk.StringVar(value="16")
-    t_shift_var = tk.StringVar(value="22")
-    read_size_var = tk.StringVar(value="4")
+    x_var = tk.StringVar(value="8")
+    t_shift_var = tk.StringVar(value="50")
+    read_size_var = tk.StringVar(value="22")
     batch_var = tk.BooleanVar(value=False)
     cell_size_var = tk.StringVar(value="24")
     delay_var = tk.StringVar(value="100")
