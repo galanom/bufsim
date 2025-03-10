@@ -161,8 +161,9 @@ class Checkerboard:
         # Compute current occupied columns count.
         current_occ = sum(1 for count in self.column_nonempty_count.values() if count > 0)
         # Update L if the current count exceeds it.
-        if current_occ > self.L:
-            self.L = current_occ
+        #if current_occ > self.L:
+        #TODO CHECK
+        self.L = current_occ
 
         if not self.batch:
             self.canvas.itemconfig(cell["id"], fill=new_color)
