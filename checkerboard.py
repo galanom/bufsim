@@ -25,9 +25,6 @@ class Checkerboard:
         # Compute a proportional font size (40% of cell_size) so that a three-digit number fits.
         self.font_size = max(8, int(self.cell_size * 0.4))
 
-        # Dictionary to track for each column (x) the number of non-empty cells.
-        self.column_nonempty_count = {col: 0 for col in range(self.x)}
-
         # Board data: mapping (row, col) -> {"id": canvas rectangle (or None in batch),
         # "state": state, "step": step, "text_id": text item id}
         self.cells = {}
@@ -135,22 +132,10 @@ class Checkerboard:
         row, col = pos
         old_state = cell["state"]
 
-        #if new_state == "empty":
-        #    cell["step"] = None
-        #    if old_state != "empty" and cell.get("text_id") is not None:
-        #        self.canvas.delete(cell["text_id"])
-        #        cell["text_id"] = None
-        #else:
         if step is None:
             cell["step"] = self.cells[pos]["step"]
         else:
             cell["step"] = step
-
-        # Update the column count.
-        if old_state == "empty" and new_state != "empty":
-            self.column_nonempty_count[col] += 1
-        elif old_state != "empty" and new_state == "empty":
-            self.column_nonempty_count[col] = max(0, self.column_nonempty_count[col] - 1)
 
         cell["state"] = new_state
 
