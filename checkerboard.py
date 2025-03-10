@@ -27,8 +27,6 @@ class Checkerboard:
 
         # Dictionary to track for each column (x) the number of non-empty cells.
         self.column_nonempty_count = {col: 0 for col in range(self.x)}
-        # New variable L: maximum number of columns that have had at least one non-empty cell.
-        self.L = 0
 
         # Board data: mapping (row, col) -> {"id": canvas rectangle (or None in batch),
         # "state": state, "step": step, "text_id": text item id}
@@ -56,10 +54,8 @@ class Checkerboard:
                     self.cells[(row, col)] = {"id": None, "state": "empty", "step": None, "text_id": None}
 
         self.writer_pos = (0, 0)
-        self.writer_moves = 0
 
-        self.reader_current_pos = (7, 0)
-        self.reader_moves = 0
+        self.reader_current_pos = (self.read_size, 0)
         self.reader_cells = []
         self.time_step = 0
         self.halted = False
@@ -78,7 +74,7 @@ class Checkerboard:
                     if self.halted:
                         break
                     self.execute_writes()
-                print(f"Simulation was ok. L: {self.L}")
+                print(f"Simulation done.")
 
         if not self.batch:
             self.root.mainloop()
@@ -158,13 +154,6 @@ class Checkerboard:
 
         cell["state"] = new_state
 
-        # Compute current occupied columns count.
-        current_occ = sum(1 for count in self.column_nonempty_count.values() if count > 0)
-        # Update L if the current count exceeds it.
-        #if current_occ > self.L:
-        #TODO CHECK
-        self.L = current_occ
-
         if not self.batch:
             self.canvas.itemconfig(cell["id"], fill=new_color)
             if (row, col, 'left') in self.side_polygons:
@@ -190,30 +179,31 @@ class Checkerboard:
         pos = self.writer_pos
         if self.cells[pos]["state"] == "written":
             if self.cells[pos]["step"] >= self.t_shift:
-                self.halt_simulation(f"Rule check failed [{self.time_step}]: writer advances to cell at {pos} that is [{self.cells[pos]['state']}].")
+                self.halt_simulation(f"Rule check failed [{self.time_step}]: writer advances to cell at {pos} that is [{self.cells[pos]['state']}]")
                 return
             else:
                 print(f"warning [{self.time_step}]: overwriting apparently useless cell at {pos} with step {self.cells[pos]['step']}")
-        if self.last_writer_marked is not None:
-            if self.cells[self.last_writer_marked]["state"] != "reading":
-                self.set_cell(self.last_writer_marked, self.writer_filled_color, "written")
+        if self.cells[pos]["state"] == "reading":
+            if self.reader_cells[0] == self.writer_pos:
+                print(f"warning [{self.time_step}]: writing over the cell it is being currently read")
             else:
-                print(f"warning [{self.time_step}]: reader just read the cell that was just written")
+                self.halt_simulation(f"Rule check failed [{self.time_step}]: writer advances to cell at {pos} that being read (and is not at the tail)")
+        if self.last_writer_marked is not None:
+            self.set_cell(self.last_writer_marked, self.writer_filled_color, "written")
         self.set_cell(pos, self.writer_last_marked_color, "writing", step=self.time_step)
-        self.last_writer_marked = pos
         r, c = pos
         if r < self.z - 1:
             self.writer_pos = (r + 1, c)
         else:
             self.writer_pos = (0, (c + 1) % self.x)
-        self.writer_moves += 1
+        self.last_writer_marked = pos
 
     def advance_reader_marker(self):
         pos = self.reader_current_pos
         if self.cells[pos]["state"] != "written":
             if self.cells[pos]["state"] == "empty":
                 self.halt_simulation(
-                    f"Rule check failed [{self.time_step}]: reader advances to cell at {pos} that is [{self.cells[pos]['state']}]."
+                    f"Rule check failed [{self.time_step}]: reader advances to cell at {pos} that is empty"
                 )
                 return
             else:
@@ -221,16 +211,14 @@ class Checkerboard:
         # Update previous reader head (if exists) to the trail color.
         if self.reader_cells:
             prev_head = self.reader_cells[-1]
-            self.set_cell(prev_head, self.reader_trail_color, "read")
+            self.set_cell(prev_head, self.reader_trail_color, "reading")
         self.set_cell(pos, self.reader_head_color, "reading")
         self.reader_cells.append(pos)
         if len(self.reader_cells) > self.read_size:
             old = self.reader_cells.pop(0)
             self.set_cell(old, self.empty_color, "empty")
-        self.reader_moves += 1
 
         r, c = pos
-
         # are we at the bottom?
         if r == 0:
             next_pos = (self.z - 1, (c + 2 - self.z) % self.x)
@@ -283,7 +271,7 @@ class Checkerboard:
             else:
                 reader_str = "  N/A  "
             self.status_label.config(
-                text=f"step:{self.time_step:3d} | writer: {writer_str} | reader: {reader_str} | L: {self.L}")
+                text=f"step:{self.time_step:3d} | writer: {writer_str} | reader: {reader_str}")
 
     def animate(self):
         if not self.halted:
