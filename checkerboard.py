@@ -139,14 +139,16 @@ class Checkerboard:
         row, col = pos
         old_state = cell["state"]
 
-        # Update cell step info if transitioning to non-empty.
-        if new_state != "empty" and old_state == "empty" and step is not None:
+        #if new_state == "empty":
+        #    cell["step"] = None
+        #    if old_state != "empty" and cell.get("text_id") is not None:
+        #        self.canvas.delete(cell["text_id"])
+        #        cell["text_id"] = None
+        #else:
+        if step is None:
+            cell["step"] = self.cells[pos]["step"]
+        else:
             cell["step"] = step
-        if new_state == "empty" and old_state != "empty":
-            cell["step"] = None
-            if cell.get("text_id") is not None:
-                self.canvas.delete(cell["text_id"])
-                cell["text_id"] = None
 
         # Update the column count.
         if old_state == "empty" and new_state != "empty":
@@ -187,12 +189,15 @@ class Checkerboard:
         pos = self.writer_pos
         if self.cells[pos]["state"] == "written":
             if self.cells[pos]["step"] >= self.t_shift:
-                self.halt_simulation(f"Rule check failed: writer advances to cell at {pos} that is [{self.cells[pos]['state']}].")
+                self.halt_simulation(f"Rule check failed [{self.time_step}]: writer advances to cell at {pos} that is [{self.cells[pos]['state']}].")
                 return
             else:
-                print(f"warning: overwriting apparently useless cell at {pos} of data {self.cells[pos]}")
+                print(f"warning [{self.time_step}]: overwriting apparently useless cell at {pos} with step {self.cells[pos]['step']}")
         if self.last_writer_marked is not None:
-            self.set_cell(self.last_writer_marked, self.writer_filled_color, "written")
+            if self.cells[self.last_writer_marked]["state"] != "reading":
+                self.set_cell(self.last_writer_marked, self.writer_filled_color, "written")
+            else:
+                print(f"warning [{self.time_step}]: reader just read the cell that was just written")
         self.set_cell(pos, self.writer_last_marked_color, "writing", step=self.time_step)
         self.last_writer_marked = pos
         r, c = pos
@@ -205,10 +210,13 @@ class Checkerboard:
     def advance_reader_marker(self):
         pos = self.reader_current_pos
         if self.cells[pos]["state"] != "written":
-            self.halt_simulation(
-                f"Rule check failed: reader advances to cell at {pos} that is [{self.cells[pos]['state']}]."
-            )
-            return
+            if self.cells[pos]["state"] == "empty":
+                self.halt_simulation(
+                    f"Rule check failed [{self.time_step}]: reader advances to cell at {pos} that is [{self.cells[pos]['state']}]."
+                )
+                return
+            else:
+                print(f"warning [{self.time_step}]: reading a cell that is being written at {pos}")
         # Update previous reader head (if exists) to the trail color.
         if self.reader_cells:
             prev_head = self.reader_cells[-1]
@@ -255,9 +263,9 @@ class Checkerboard:
     def execute_writes(self, event=None):
         if self.halted:
             return
-        self.advance_writer_marker()
         if self.time_step >= self.t_shift:
             self.advance_reader_marker()
+        self.advance_writer_marker()
         self.time_step += 1
         if not self.batch:
             self.update_status_label()
