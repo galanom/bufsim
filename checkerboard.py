@@ -185,9 +185,12 @@ class Checkerboard:
 
     def advance_writer_marker(self):
         pos = self.writer_pos
-        if self.cells[pos]["state"] != "empty":
-            self.halt_simulation(f"Rule check failed: writer advances to cell at {pos} that is [{self.cells[pos]['state']}].")
-            return
+        if self.cells[pos]["state"] == "written":
+            if self.cells[pos]["step"] >= self.t_shift:
+                self.halt_simulation(f"Rule check failed: writer advances to cell at {pos} that is [{self.cells[pos]['state']}].")
+                return
+            else:
+                print(f"warning: overwriting apparently useless cell at {pos} of data {self.cells[pos]}")
         if self.last_writer_marked is not None:
             self.set_cell(self.last_writer_marked, self.writer_filled_color, "written")
         self.set_cell(pos, self.writer_last_marked_color, "writing", step=self.time_step)
