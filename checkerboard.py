@@ -52,7 +52,7 @@ class Checkerboard:
 
         self.writer_pos = (0, 0)
 
-        self.reader_current_pos = (self.read_size, 0)
+        self.reader_pos = (0, 0)
         self.reader_cells = []
         self.time_step = 0
         self.halted = False
@@ -165,9 +165,8 @@ class Checkerboard:
         if self.cells[pos]["state"] == "written":
             if self.cells[pos]["step"] >= self.t_shift:
                 self.halt_simulation(f"Rule check failed [{self.time_step}]: writer advances to cell at {pos} that is [{self.cells[pos]['state']}]")
-                return
             else:
-                print(f"warning [{self.time_step}]: overwriting apparently useless cell at {pos} with step {self.cells[pos]['step']}")
+                print(f"debug [{self.time_step}]: overwriting {pos} of step=[{self.cells[pos]['step']}]")
         if self.cells[pos]["state"] == "reading":
             if self.reader_cells[0] == self.writer_pos:
                 print(f"warning [{self.time_step}]: writing over the cell it is being currently read")
@@ -184,13 +183,10 @@ class Checkerboard:
         self.last_writer_marked = pos
 
     def advance_reader_marker(self):
-        pos = self.reader_current_pos
+        pos = self.reader_pos
         if self.cells[pos]["state"] != "written":
             if self.cells[pos]["state"] == "empty":
-                self.halt_simulation(
-                    f"Rule check failed [{self.time_step}]: reader advances to cell at {pos} that is empty"
-                )
-                return
+                self.halt_simulation(f"Rule check failed [{self.time_step}]: reader advances to cell at {pos} that is empty")
             else:
                 print(f"warning [{self.time_step}]: reading a cell that is being written at {pos}")
         # Update previous reader head (if exists) to the trail color.
@@ -204,27 +200,9 @@ class Checkerboard:
             self.set_cell(old, self.empty_color, "empty")
 
         r, c = pos
-        # are we at the bottom?
         if r == 0:
-            next_pos = (self.z - 1, (c + 2 - self.z) % self.x)
-        else:
-            next_pos = (r - 1, (c + 1) % self.x)
-
-        #if r > 0:
-        #    # Normal diagonal move, but if c+1 reaches self.x, wrap it modulo self.x.
-        #    next_pos = (r - 1, (c + 1) % self.x)
-        #else:
-        #    # At the top row, we can’t go diagonally upward.
-        #    # Continue with the original anti-diagonal logic.
-        #    i = r + c
-        #    next_i = i + 1
-        #    if next_i > (self.z - 1) + (self.x - 1):
-        #        next_pos = (0, 0)
-        #    elif next_i < self.z:
-        #        next_pos = (next_i, 0)
-        #    else:
-        #        next_pos = (self.z - 1, next_i - (self.z - 1))
-        self.reader_current_pos = next_pos
+            c = c + 1
+        self.reader_pos = ((r - 1) % self.z, (c + 1) % self.x)
 
 
     def halt_simulation(self, error_message):
